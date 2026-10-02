@@ -207,8 +207,6 @@ def processBackgroundImage():
       last_background_scale = -1
       last_image_path = None
 
-   launch_background.place(x=0, y=0, relwidth=1, relheight=1)
-
 def matchIgnoreCase(listToCheck: list[str], stringToMatch: str):
    for item in listToCheck:
       if item.lower() == stringToMatch.lower():
@@ -732,7 +730,8 @@ txt_button.grid(row=0, column=2, columnspan=1, pady=2)
 
 launch_background = tk.Label(launch_frame, bg="white", image=None) # pyright: ignore[reportArgumentType]
 launch_background.lower()
-launch_frame.bind("<Configure>", lambda event: processBackgroundImage())
+launch_background.bind("<Configure>", lambda event: processBackgroundImage())
+launch_background.place(x=0, y=0, relwidth=1, relheight=1)
 
 mapsetSelected()
 
