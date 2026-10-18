@@ -57,7 +57,7 @@ def try_to_downscale_png(source: Path, destination: Path, thumbnail_size: tuple[
    try:
       from PIL import Image
 
-      with Image.open(source) as img:
+      with Image.open(source).convert("RGB") as img:
          size_factors = (thumbnail_size[0] * 1.0 / img.width, thumbnail_size[1] * 1.0 / img.height)
          smaller_factor = min(size_factors[0], size_factors[1])
          final_size = (round(img.width * smaller_factor), round(img.height * smaller_factor))
