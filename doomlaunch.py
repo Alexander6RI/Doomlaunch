@@ -8,6 +8,7 @@ import json
 from pathlib import Path
 from functools import partial
 import locale
+from typing import TypeVar, Generic
 
 from wad_parse import Mapset
 from file_types import read_mapset
@@ -62,7 +63,7 @@ map_folders: list[Path] = [
 mod_folders: list[Path] = [
 ]
 
-engine_names_paths: dict[str, str] = {}
+engine_names_paths: dict[str, Path] = {}
 iwad_files: list[Path] = []
 iwad_names: list[str] = []
 mapsets: dict[str, Mapset] = {}
@@ -107,7 +108,7 @@ def loadProfile():
    iwad_box.set_name_value_map(basegame_values)
 
    if profile_name in profiles:
-      engine_box.set(profiles[profile_name]["engine"])
+      engine_box.set(Path(profiles[profile_name]["engine"]))
       iwad_box.set(profiles[profile_name]["iwad"])
 
       for checkbox, var, mod in mod_checkboxes:
@@ -135,17 +136,17 @@ def updateProfile():
    if profile_name not in profiles:
       profiles[profile_name] = {}
 
-   profiles[profile_name]["engine"] = engine_box.get()
+   profiles[profile_name]["engine"] = str(engine_box.get())
    profiles[profile_name]["iwad"] = iwad_box.get()
    profiles[profile_name]["mods"] = [mod.name for checkbox, var, mod in mod_checkboxes if var.get() == True]
 
 def runDoom():
    mapset = mapsets[selected_map.get()]
 
-   command = [engine_box.get(), "-iwad", iwad_files[iwad_names.index(iwad_box.get())]]
+   command = [str(engine_box.get()), "-iwad", str(iwad_files[iwad_names.index(iwad_box.get())])]
 
    if not mapset.is_iwad:
-      command += ["-file", mapset.fullpath]
+      command += ["-file", str(mapset.fullpath)]
 
    if manage_savedirs:
       savedir = dir_path / "saves" / mapset.name
@@ -154,7 +155,7 @@ def runDoom():
 
    for checkbox, var, mod in mod_checkboxes:
       if var.get() == True:
-         command += ["-file", mod.fullpath]
+         command += ["-file", str(mod.fullpath)]
 
    print("Running command " + str(command))
    try:
@@ -374,11 +375,14 @@ def add_engine():
       engines.append(Path(result))
       write_config()
 
-def remove_engine(engine_path: str):
-   print("removing " + str(engine))
+def remove_engine(engine_path: Path):
+   print("removing " + str(engine_path))
    if engine_path in engines:
       engines.remove(engine_path)
       write_config()
+   else:
+      print(str(engine_path) + " not in " + repr(engines))
+      messagebox.showinfo(message="Failed to remove this engine\n(has it already been removed?)")
 
 def display_about():
    messagebox.showinfo(message="""Doomlaunch by Alexander6RI
@@ -399,12 +403,13 @@ def get_base_game(looking_for: str, available_iwads: list[str]):
 
    return looking_for
 
-class CustomCombobox(ttk.Combobox):
+ComboboxT = TypeVar("ComboboxT")
+class CustomCombobox(ttk.Combobox, Generic[ComboboxT]):
    def __init__(self, *args, **kwargs):
       super().__init__(*args, **kwargs)
-      self.name_value_map: dict[str, str] = {}
+      self.name_value_map: dict[str, ComboboxT] = {}
 
-   def set_name_value_map(self, name_value_map: dict[str, str]):
+   def set_name_value_map(self, name_value_map: dict[str, ComboboxT]):
       # get and set the previous selection so that if the name changes but the value is still provided, the selected name will be updated and there won't be an error calling get()
       previous_selection = self.get()
 
@@ -412,7 +417,7 @@ class CustomCombobox(ttk.Combobox):
       self.name_value_map = name_value_map
 
       if previous_selection in name_value_map.values():
-         self.set(previous_selection)
+         self.set(previous_selection) # type: ignore
 
    def get(self):
       selected_key = super().get()
@@ -421,7 +426,7 @@ class CustomCombobox(ttk.Combobox):
       else:
          return selected_key
    
-   def set(self, value):
+   def set(self, value: ComboboxT):
       for key, val in self.name_value_map.items():
          if val == value:
             super().set(key)
@@ -515,9 +520,9 @@ except FileNotFoundError:
 
 for engine in engines:
    if engine in executables.program_names:
-      engine_names_paths[executables.program_names[engine]] = str(engine)
+      engine_names_paths[executables.program_names[engine]] = engine
    else:
-      engine_names_paths[engine.stem] = str(engine)
+      engine_names_paths[engine.stem] = engine
 
 window = tk.Tk()
 fix_dpi_scaling(window, (210, 220))
@@ -670,12 +675,12 @@ iwad_pwad_separator.grid(row=number_of_iwads, column=0, columnspan=2, sticky="ew
 
 map_canvas.create_window((0, 0), window=map_window, anchor="nw")
 
-engine_box = CustomCombobox(window, state="readonly")
+engine_box = CustomCombobox[Path](window, state="readonly")
 engine_box.set_name_value_map(engine_names_paths)
 engine_box.bind("<<ComboboxSelected>>", lambda event: updateProfile())
 engine_box.grid(row=1, column=0, columnspan=1, sticky="ew")
 
-iwad_box = CustomCombobox(window, state="readonly", values=iwad_names)
+iwad_box = CustomCombobox[str](window, state="readonly", values=iwad_names)
 iwad_box.bind("<<ComboboxSelected>>", lambda event: updateProfile())
 iwad_box.grid(row=1, column=1, columnspan=1, sticky="ew")
 
